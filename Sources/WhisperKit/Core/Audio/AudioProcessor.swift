@@ -213,6 +213,12 @@ open class AudioProcessor: NSObject, AudioProcessing {
 
     public var audioBufferCallback: (([Float]) -> Void)?
     public var minBufferLength = Int(Double(WhisperKit.sampleRate) * 0.1) // 0.1 second of audio at 16,000 Hz
+    public private(set) var isInputSuppressed = false
+
+    /// Suppress input buffers by replacing them with silence while keeping timing intact.
+    public func setInputSuppressed(_ isSuppressed: Bool) {
+        isInputSuppressed = isSuppressed
+    }
     
     open func padOrTrim(fromArray audioArray: [Float], startAt startIndex: Int, toLength frameLength: Int) -> (any AudioProcessorOutputType)? {
         return AudioProcessor.padOrTrimAudio(fromArray: audioArray, startAt: startIndex, toLength: frameLength, saveSegment: false)
@@ -1004,7 +1010,8 @@ public extension AudioProcessor {
                 }
             }
 
-            let newBufferArray = Self.convertBufferToArray(buffer: buffer)
+            var newBufferArray = Self.convertBufferToArray(buffer: buffer)
+            self.suppressInputIfNeeded(&newBufferArray)
             self.processBuffer(newBufferArray)
         }
 
@@ -1095,5 +1102,13 @@ public extension AudioProcessor {
         engine.reset()
 
         audioEngine = nil
+    }
+
+    func suppressInputIfNeeded(_ buffer: inout [Float]) {
+        guard isInputSuppressed else { return }
+        buffer.withUnsafeMutableBufferPointer { ptr in
+            guard let base = ptr.baseAddress else { return }
+            vDSP_vclr(base, 1, vDSP_Length(ptr.count))
+        }
     }
 }
