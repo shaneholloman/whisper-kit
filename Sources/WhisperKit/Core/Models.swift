@@ -17,11 +17,9 @@ public protocol WhisperMLModel: AnyObject {
 
 public extension WhisperMLModel {
     func loadModel(at modelPath: URL, computeUnits: MLComputeUnits, prewarmMode: Bool = false) async throws {
-        let loadedModel = try await Task {
-            let modelConfig = MLModelConfiguration()
-            modelConfig.computeUnits = computeUnits
-            return try await MLModel.load(contentsOf: modelPath, configuration: modelConfig)
-        }.value
+        let modelConfig = MLModelConfiguration()
+        modelConfig.computeUnits = computeUnits
+        let loadedModel = try await MLModel.load(contentsOf: modelPath, configuration: modelConfig)
 
         model = prewarmMode ? nil : loadedModel
     }
@@ -687,12 +685,30 @@ public struct TranscriptionProgress: Sendable {
 /// A callback that provides transcription segments as they are discovered.
 /// - Parameters:
 ///   - segments: An array of `TranscriptionSegment` objects representing the transcribed segments
-public typealias SegmentDiscoveryCallback = (_ segments: [TranscriptionSegment]) -> Void
+public typealias SegmentDiscoveryCallback = @Sendable (_ segments: [TranscriptionSegment]) -> Void
 
-/// A callback that reports changes in the model's state.
 /// A callback that reports changes in the transcription process.
 /// - Parameter state: The current `TranscriptionState` of the transcription process
-public typealias TranscriptionStateCallback = (_ state: TranscriptionState) -> Void
+public typealias TranscriptionStateCallback = @Sendable (_ state: TranscriptionState) -> Void
+
+
+/// A callback that reports incremental updates about the progress of a long‑running operation.
+///
+/// WhisperKit uses this closure to surface progress for tasks such as downloading model assets.
+/// The closure is annotated `@Sendable` and may be invoked from a background thread.
+///
+/// - Parameter progress: A Foundation `Progress` instance describing the current state of the task.
+///
+/// - Important: This callback can be called on any thread. If you update UI, hop to the main actor:
+///   `await MainActor.run { ... }`.
+///
+/// - Note: Keep the work performed inside this callback minimal to avoid slowing the underlying
+///   operation. The closure may be invoked many times and typically finishes with
+///   `fractionCompleted == 1.0` when the operation completes (or fewer times if it is cancelled
+///   or fails).
+///
+/// - SeeAlso: `ModelStateCallback`, `TranscriptionStateCallback`, `TranscriptionCallback`
+public typealias ProgressCallback = @Sendable (Progress) -> Void
 
 /// Represents the different states of the transcription process.
 @frozen
@@ -729,7 +745,7 @@ public enum TranscriptionState: CustomStringConvertible {
 ///   - `false`: Stop the transcription process early.
 ///   - `nil`: Continue the transcription process (equivalent to returning `true`).
 /// - Note: This callback should be lightweight and return as quickly as possible to avoid extra decoding loops
-public typealias TranscriptionCallback = ((TranscriptionProgress) -> Bool?)?
+public typealias TranscriptionCallback = @Sendable (TranscriptionProgress) -> Bool?
 
 public struct TranscriptionTimings: Codable, Sendable {
     public var pipelineStart: CFAbsoluteTime

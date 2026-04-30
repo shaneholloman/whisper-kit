@@ -1,8 +1,13 @@
-// swift-tools-version: 5.10
+// swift-tools-version: 6.2
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
 import Foundation
+
+let approachableConcurrencySettings: [SwiftSetting] = [
+    .enableUpcomingFeature("InferIsolatedConformances"),
+    .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
+]
 
 let package = Package(
     name: "argmax-oss-swift",
@@ -39,13 +44,12 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.3.0"),
+        .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.7.0"),
     ] + (isServerEnabled() ? [
         .package(url: "https://github.com/vapor/vapor.git", from: "4.115.1"),
         .package(url: "https://github.com/apple/swift-openapi-generator", from: "1.10.2"),
         .package(url: "https://github.com/apple/swift-openapi-runtime", from: "1.8.2"),
         .package(url: "https://github.com/swift-server/swift-openapi-vapor", from: "1.0.1"),
-
     ] : []),
     targets: [
         .target(
@@ -56,31 +60,25 @@ let package = Package(
                 "TTSKit",
                 "SpeakerKit",
             ],
-            swiftSettings: [
-                .enableExperimentalFeature("StrictConcurrency")
-            ]
+            swiftSettings: approachableConcurrencySettings
         ),
         .target(
             name: "ArgmaxCore",
-            swiftSettings: [
-                .enableExperimentalFeature("StrictConcurrency")
-            ]
+            swiftSettings: approachableConcurrencySettings
         ),
         .target(
             name: "WhisperKit",
             dependencies: [
                 "ArgmaxCore",
             ],
-            swiftSettings: [
-                .enableExperimentalFeature("StrictConcurrency")
-            ]
+            swiftSettings: approachableConcurrencySettings
         ),
         .target(
             name: "TTSKit",
             dependencies: [
                 "ArgmaxCore",
             ],
-            swiftSettings: [.enableExperimentalFeature("StrictConcurrency")]
+            swiftSettings: approachableConcurrencySettings
         ),
         .target(
             name: "SpeakerKit",
@@ -88,7 +86,7 @@ let package = Package(
                 "ArgmaxCore",
                 "WhisperKit",
             ],
-            swiftSettings: [.enableExperimentalFeature("StrictConcurrency")]
+            swiftSettings: approachableConcurrencySettings
         ),
         .testTarget(
             name: "WhisperKitTests",
@@ -99,18 +97,14 @@ let package = Package(
             resources: [
                 .process("Resources"),
             ],
-            swiftSettings: [
-                .enableExperimentalFeature("StrictConcurrency")
-            ]
+            swiftSettings: approachableConcurrencySettings
         ),
         .testTarget(
             name: "TTSKitTests",
             dependencies: [
                 "TTSKit"
             ],
-            swiftSettings: [
-                .enableExperimentalFeature("StrictConcurrency")
-            ]
+            swiftSettings: approachableConcurrencySettings
         ),
         .testTarget(
             name: "SpeakerKitTests",
@@ -121,9 +115,7 @@ let package = Package(
             resources: [
                 .process("Resources"),
             ],
-            swiftSettings: [
-                .enableExperimentalFeature("StrictConcurrency")
-            ]
+            swiftSettings: approachableConcurrencySettings
         ),
         .executableTarget(
             name: "ArgmaxCLI",
@@ -139,12 +131,10 @@ let package = Package(
             ] : []),
             path: "Sources/ArgmaxCLI",
             exclude: (isServerEnabled() ? [] : ["Server"]),
-            swiftSettings: [
-                .enableExperimentalFeature("StrictConcurrency"),
-            ] + (isServerEnabled() ? [.define("BUILD_SERVER_CLI")] : [])
+            swiftSettings: approachableConcurrencySettings + (isServerEnabled() ? [.define("BUILD_SERVER_CLI")] : [])
         )
     ],
-    swiftLanguageVersions: [.v5]
+    swiftLanguageModes: [.v6]
 )
 
 func isServerEnabled() -> Bool {
